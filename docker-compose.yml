@@ -1,0 +1,55 @@
+version: "3.9"
+
+services:
+
+  postgres:
+
+    image: postgres:16
+
+    container_name: postgres
+
+    restart: always
+
+    environment:
+
+      POSTGRES_DB: urlshortener
+
+      POSTGRES_USER: postgres
+
+      POSTGRES_PASSWORD: postgres
+
+    ports:
+
+      - "5432:5432"
+
+    volumes:
+
+      - postgres_data:/var/lib/postgresql/data
+
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  app:
+
+    build:
+
+      context: ./app
+
+    container_name: url-shortener
+
+    restart: always
+
+    depends_on:
+
+      - postgres
+
+    ports:
+
+      - "5000:5000"
+
+    env_file:
+
+      - .env
+
+volumes:
+
+  postgres_data:
