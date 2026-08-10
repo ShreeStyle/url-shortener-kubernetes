@@ -89,7 +89,13 @@ class URL(db.Model):
 # ----------------------------------------------------
 
 with app.app_context():
-    db.create_all()
+    try:
+        db.create_all()
+    except Exception:
+        # Database may not be available at import time (e.g. Vercel cold start
+        # before DB env vars are set). The app still loads; DB-dependent routes
+        # will return errors only if the DB is genuinely unreachable at runtime.
+        pass
 
 
 # ----------------------------------------------------
