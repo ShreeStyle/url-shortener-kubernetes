@@ -23,13 +23,30 @@ load_dotenv(BASE_DIR / ".env")
 app = Flask(__name__)
 
 # Database Connection
-app.config["SQLALCHEMY_DATABASE_URI"] = (
-    f"postgresql://{os.getenv('DB_USER')}:"
-    f"{os.getenv('DB_PASSWORD')}@"
-    f"{os.getenv('DB_HOST')}:"
-    f"{os.getenv('DB_PORT')}/"
-    f"{os.getenv('DB_NAME')}"
+# Use Postgres when all DB env vars are present (Docker / Kubernetes / Vercel
+# with a configured cloud database). Fall back to SQLite in-memory when vars
+# are absent so the app still starts on Vercel before a DB is wired up.
+_db_vars = (
+    os.getenv("DB_USER"),
+    os.getenv("DB_PASSWORD"),
+    os.getenv("DB_HOST"),
+    os.getenv("DB_PORT"),
+    os.getenv("DB_NAME"),
 )
+
+if all(_db_vars):
+    app.config["SQLALCHEMY_DATABASE_URI"] = (
+        f"postgresql://{_db_vars[0]}:"
+        f"{_db_vars[1]}@"
+        f"{_db_vars[2]}:"
+        f"{_db_vars[3]}/"
+        f"{_db_vars[4]}"
+    )
+else:
+    # Fallback: in-memory SQLite so the Flask app starts without crashing.
+    # URL shortening will work ephemerally; data is not persisted between
+    # requests in this mode. Set the five DB_* env vars to enable Postgres.
+    app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///:memory:"
 
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
@@ -95,6 +112,8 @@ with app.app_context():
         # Database may not be available at import time (e.g. Vercel cold start
         # before DB env vars are set). The app still loads; DB-dependent routes
         # will return errors only if the DB is genuinely unreachable at runtime.
+        pass
+    except BaseException:
         pass
 
 
